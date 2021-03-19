@@ -15,7 +15,7 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 		<batch:job jobName="CompaniesBatchProccess" doc:id="ac95b4db-3c7f-4484-8790-d3c2ea554c06" >
 			<batch:process-records >
 				<batch:step name="Batch_Step" doc:id="d73e1a6b-1078-44d1-a218-5b73692a0a89" >
-					<file:read doc:name="Read Company" doc:id="c0470c1f-ec80-4f92-a33f-bab114f7a06d" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\companies.csv">
+					<file:read doc:name="Read Companies" doc:id="c0470c1f-ec80-4f92-a33f-bab114f7a06d" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\companies.csv">
 			<ee:repeatable-file-store-stream bufferUnit="MB" />
 			<reconnect />
 		</file:read>
