@@ -12,17 +12,11 @@ http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/cu
 	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="f475f65a-5ded-44e2-abd7-e3b93af0c2e8" />
 	<os:object-store name="Object_store" doc:name="Object store" doc:id="7d42b26d-16be-48dc-9916-1bb3f1740a20" maxEntries="5000" entryTtl="1" expirationInterval="60" config-ref="ObjectStore_Config" />
 	<flow name="get_companies" doc:id="3a701fb8-edfc-4533-95d0-6f94ff5b31c5" >
-		<batch:job jobName="CompaniesBatchProccess" doc:id="ac95b4db-3c7f-4484-8790-d3c2ea554c06" >
-			<batch:process-records >
-				<batch:step name="Batch_Step" doc:id="d73e1a6b-1078-44d1-a218-5b73692a0a89" >
-					<file:read doc:name="Read Companies" doc:id="c0470c1f-ec80-4f92-a33f-bab114f7a06d" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\companies.csv">
+		<file:read doc:name="Read Companies" doc:id="c0470c1f-ec80-4f92-a33f-bab114f7a06d" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\companies.csv">
 			<ee:repeatable-file-store-stream bufferUnit="MB" />
 			<reconnect />
 		</file:read>
-				</batch:step>
-			</batch:process-records>
-			<batch:on-complete >
-				<ee:transform doc:name="Filter companies" doc:id="4ad2accc-5aed-4fad-b788-a8a126482366">
+		<ee:transform doc:name="Filter companies" doc:id="4ad2accc-5aed-4fad-b788-a8a126482366">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
@@ -43,10 +37,7 @@ fun isDuplicatedName(company_name) = payload filter ((item, index) -> item.compa
 			<ee:variables>
 			</ee:variables>
 		</ee:transform>
-				<os:store doc:name="Company store" doc:id="deef27c1-383d-4d3f-846c-11b05c5e94cf" key="external_id__c" objectStore="Object_store"/>
-			</batch:on-complete>
-		</batch:job>
-		<logger level="INFO" doc:name="Logger" doc:id="13ebe279-4f05-442f-b2bd-bde3175fc241" message="#[payload]"/>
+		<logger level="INFO" doc:name="Logger" doc:id="13ebe279-4f05-442f-b2bd-bde3175fc241" message="#[payload]" />
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="c4ae0226-7995-4e80-a1c4-00d1f458c670" >
 				<logger level="ERROR" doc:name="Logger" doc:id="7eb35851-006d-47ad-bddd-b5ca2a703dae" message="#[payload]"/>
@@ -125,19 +116,19 @@ output application/text
 			</on-error-propagate>
 		</error-handler>
 	</flow>
-	<flow name="get_events" doc:id="f5ec48fd-bf1b-49ad-a9a7-17da22e6780a" >
+<!-- 	<flow name="get_events" doc:id="f5ec48fd-bf1b-49ad-a9a7-17da22e6780a" >
 		<file:read doc:name="Read Events" doc:id="d469e32d-168d-43da-8050-002fe5e7ed78" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\events.xml" target="events"/>
 		<ee:transform doc:name="Transform Message" doc:id="854ca7bf-2372-4ff9-8df3-e44b7085f107" >
 			<ee:message >
 				<ee:set-payload ><![CDATA[%dw 2.0
 output application/json
----
+-&#45;&#45;
 vars.events.root.*row]]></ee:set-payload>
 			</ee:message>
 			<ee:variables >
 				<ee:set-variable variableName="events" ><![CDATA[%dw 2.0
 output application/json
----
+-&#45;&#45;
 vars.events.root.*row]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
@@ -147,7 +138,7 @@ vars.events.root.*row]]></ee:set-variable>
 output application/json
 fun normalize(event_date) = (event_date) replace "/" with "-" replace "." with "-"
 fun getSfId(company_id) = vars.bulkSuccessfullResult filter (item, index) -> item.originalFields.external_id__c == company_id
----
+-&#45;&#45;
 vars.events filter ($.company_id != "" and $.company_id != "0" and $.company_id != null 
 and $.event_type != "" and $.event_type != "0" and $.event_type != null
 and $.event_date != "" and $.event_date != "0" and $.event_date != null 
@@ -163,7 +154,7 @@ and $.event_date as Date {format: "M/d/yyyy"} > "12/31/2008" as Date {format: "M
 				<ee:set-variable variableName="noCompanyEvents" ><![CDATA[%dw 2.0
 output application/json
 fun unMatch(company_id) = payload filter (item, index) -> item.company_id == company_id
----
+-&#45;&#45;
 vars.events.root.*row map {
     company_id: $.company_id,
     event_type: $.event_type,
@@ -172,7 +163,7 @@ vars.events.root.*row map {
 } filter ($.doesAccountExistForEvent == false and $.company_id != null)]]></ee:set-variable>
 				<ee:set-variable variableName="emptyFieldsEvents" ><![CDATA[%dw 2.0
 output application/json
----
+-&#45;&#45;
 vars.events.root.*row filter (item, index) -> 
 	item.company_id == null 
 or item.event_date == null 
@@ -187,13 +178,13 @@ or item.event_type == null]]></ee:set-variable>
 					<ee:message >
 						<ee:set-payload ><![CDATA[%dw 2.0
 output application/text
----
+-&#45;&#45;
 "File is demaged, please check file 'events.xml'"]]></ee:set-payload>
 					</ee:message>
 				</ee:transform>
 			</on-error-propagate>
 		</error-handler>
-	</flow>
+	</flow> -->
 	<flow name="retrieve_failed_records" doc:id="b66e511f-7d0b-4f9e-998e-ee65a416cf99" >
 		<salesforce:retrieve-job-failed-results-bulk-v2 doc:name="Retrieve job failed results bulk v 2" doc:id="d185d93d-bdbd-4921-a3f4-1877989d9e93" config-ref="Salesforce_Config" id="#[vars.jobID]" target="bulkFailedResult" />
 		<ee:transform doc:name="Failed Results" doc:id="686f3a2a-221c-4162-949e-a644d594c2fd">
@@ -216,10 +207,14 @@ vars.bulkFailedResult]]></ee:set-payload>
 				<ee:set-variable variableName="message"><![CDATA[%dw 2.0
 output application/json
 ---
-{
-Type__c: 'FAIL',
-Message__c: "Records with External IDs below - are not valid: \n" ++ (payload.originalFields.external_id__c joinBy  "\n ")
-}]]></ee:set-variable>
+[
+	{
+		Type__c: 'FAIL',
+		Message__c: if (payload.originalFields.external_id__c != null)"Records with External IDs below - are not valid: \n" ++ (payload.originalFields.external_id__c joinBy  "\n ") 
+		else vars.bulkFailedResult[0].errorMessage
+	}
+]
+]]></ee:set-variable>
 			</ee:variables>
 		</ee:transform>
 				<salesforce:create doc:name="Create" doc:id="df26591a-3b91-46fd-a00b-1276eaf3caae" config-ref="Salesforce_Config" type="Data_Migration_Log__c">
@@ -227,6 +222,11 @@ Message__c: "Records with External IDs below - are not valid: \n" ++ (payload.or
 		</salesforce:create>
 			</otherwise>
 		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="257ee1ff-1adc-41f0-b291-a9be947a0189" >
+				<logger level="INFO" doc:name="Logger" doc:id="e6a8d211-8e08-479e-bebb-629cbd356b60" />
+			</on-error-propagate>
+		</error-handler>
 	</flow>
 	<flow name="retrieve_successful_records" doc:id="9a042c7f-41f2-4485-b60a-f293806cbf7e" >
 		<salesforce:retrieve-job-successful-results-bulk-v2 doc:name="Retrieve job successful results bulk v 2" doc:id="8fab9760-a9a6-4428-83bf-bfaa17ee1444" config-ref="Salesforce_Config" id="#[vars.jobID]" target="bulkSuccessfullResult"/>
@@ -235,9 +235,14 @@ Message__c: "Records with External IDs below - are not valid: \n" ++ (payload.or
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
 ---
-vars.bulkSuccessfullResult]]></ee:set-payload>
+vars.bulkSuccessfullResult map {
+	external_id__c: $.originalFields.external_id__c,
+	sfId: $.id
+}]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
+		<os:store doc:name="Store Accounts Ids" doc:id="12b850c9-10dc-4b47-9d59-0f851ad8940d" key="#[vars.objectName]" objectStore="Object_store">
+		</os:store>
 	</flow>
 	<flow name="post_records" doc:id="aaf95659-ee4a-4ed5-8848-f148f48bd02b" >
 		<logger level="INFO" doc:name="Logger" doc:id="239ef6c9-c7ff-4009-8862-5af9c7bba793" message="#[payload]"/>
@@ -251,7 +256,6 @@ output application/csv lineSeparator="\n", quoteValues=true
 vars.events]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-				<salesforce:create-job-bulk-api-v2 objectType="#[vars.objectName]" operation="insert" doc:name="Map Object" doc:id="408e2f85-ccd1-412c-ba58-a7440bb29871" config-ref="Salesforce_Config" target="jobResult" />
 			</when>
 			<when expression='#[vars.objectName == "Account"]'>
 				<ee:transform doc:name="Companies Mapping" doc:id="8cdb78b4-7f35-4a79-bdfd-e3d80f14baab">
@@ -262,13 +266,13 @@ output application/csv lineSeparator="\n", quoteValues=true
 vars.addresses_companies]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-				<salesforce:create-job-bulk-api-v2 objectType="#[vars.objectName]" operation="upsert" doc:name="Map Object" doc:id="49f8d1e6-d194-4d7d-8b0f-84adc2a63497" config-ref="Salesforce_Config" target="jobResult" externalIdFieldName="external_id__c">
-		</salesforce:create-job-bulk-api-v2>
 			</when>
 			<otherwise>
 				<logger level="INFO" doc:name="Logger" doc:id="b5032ffb-a359-4f8b-8901-be5a7f13a5f6" message="#[payload]" />
 			</otherwise>
 		</choice>
+		<salesforce:create-job-bulk-api-v2 objectType="#[vars.objectName]" operation='#[if (vars.objectName as String == "Account") "upsert" else "insert"]' doc:name="Map Object" doc:id="49f8d1e6-d194-4d7d-8b0f-84adc2a63497" config-ref="Salesforce_Config" target="jobResult" externalIdFieldName='#[if (vars.objectName as String == "Account") "external_id__c" else ""]'>
+		</salesforce:create-job-bulk-api-v2>
 		<ee:transform doc:name="Transform Message" doc:id="dcc74e72-2cc0-492e-91e3-6a3e94fb02c5">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
@@ -294,8 +298,9 @@ payload]]></ee:set-variable>
 		</ee:transform>
 			<salesforce:get-job-state-bulk-api-v2 doc:name="Get job status" doc:id="90ac9399-785d-4e65-a347-d93453adcf87" config-ref="Salesforce_Config" id="#[vars.jobID]" target="jobStatus" />
 			<choice doc:name="Choice" doc:id="f895590e-c668-4bcb-844f-9d81b93fe5f2">
-			<when expression='#[vars.jobStatus.state == "InProgress"]'>
+			<when expression='#[vars.jobStatus.state == "InProgress" or vars.jobStatus.state == "UploadComplete"]'>
 					<raise-error doc:name="Raise error" doc:id="838b413f-d033-4e4b-93da-8e697c8cb295" type="SALESFORCE_JOB:INPROGRESS"/>
+					<logger level="INFO" doc:name="Logger" doc:id="553e8c4a-ee96-42b4-a66d-a6e3f405cff2" message="#[vars.vars.jobStatus.state]"/>
 			</when>
 			<when expression='#[vars.jobStatus.state == "Failed"]'>
 				<logger level="ERROR" doc:name="Logger" doc:id="b2988b50-e43c-40b0-b514-1d1f4d3eda68" message='#[%dw 2.0

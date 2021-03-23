@@ -10,7 +10,7 @@ http://www.mulesoft.org/schema/mule/validation http://www.mulesoft.org/schema/mu
 		<flow-ref doc:name="Get Addresses Flow " doc:id="dbed5e61-a2af-4e3c-8706-ef4d5ab41e6e" name="get_addresses" target="addresses_companies"/>
 		<set-variable value="Account" doc:name="Set Object Name" doc:id="ea47343d-4438-47be-bb1f-1aceab1117a9" variableName="objectName" />
 		<flow-ref doc:name="Post Compamies-Addresses" doc:id="79a46aa6-f062-4405-951d-e969e2009c06" name="post_records"/>
-		<flow-ref doc:name="Get Events Flow" doc:id="de36b4f1-c7ac-48db-832f-175c435ece02" name="get_events" target="events"/>
+		<flow-ref doc:name="Get Events Flow" doc:id="de36b4f1-c7ac-48db-832f-175c435ece02" name="get_events_new" target="events"/>
 		<set-variable value="Event" doc:name="Set Object Name" doc:id="d1cd72ad-8bce-4d6c-9224-a348b2a24cf3" variableName="objectName"/>
 		<flow-ref doc:name="Post Events" doc:id="46b7b7d3-fb4a-4414-8e1d-f1c014c53c47" name="post_records"/>
 		<ee:transform doc:name="Transform Message" doc:id="cb1d14d4-efab-48cd-8e91-71684a2b1ea9" >
