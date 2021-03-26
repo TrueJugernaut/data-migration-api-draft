@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:os="http://www.mulesoft.org/schema/mule/os" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core"
+	xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
+	<flow name="get_events_new" doc:id="8d45d20e-3cfe-4a59-aa08-e7052864e56c" >
+		<file:read doc:name="Read Events" doc:id="c4229e64-4e21-43e6-8cb9-030a59fd8156" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\events.xml" target="events" />
+		<os:retrieve doc:name="Retrieve Accounts" doc:id="5af29162-0ec0-4c7b-b917-f71eaebccbc3" key="Account" objectStore="Object_store" target="accounts"/>
+		<ee:transform doc:name="Format Events" doc:id="4f19a0ce-8423-49c5-a256-ce6c81125bda" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+vars.events.root.*row]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="events" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.events.root.*row]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<ee:transform doc:name="Filter Events" doc:id="b300d8cc-9b1a-496a-bf70-e0995444340c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun normalize(event_date) = (event_date) replace "/" with "-" replace "." with "-"
+fun getSfId(company_id) = vars.accounts filter (item, index) -> item.external_id__c == company_id
+---
+vars.events filter ($.company_id != "" and $.company_id != "0" and $.company_id != null 
+and $.event_type != "" and $.event_type != "0" and $.event_type != null
+and $.event_date != "" and $.event_date != "0" and $.event_date != null 
+and $.event_date as Date {format: "M/d/yyyy"} > "12/31/2008" as Date {format: "M/d/yyy"}
+) map {
+    Subject: $.event_type,
+    WhatId: getSfId($.company_id).sfId[0],
+    StartDateTime: normalize($.event_date as Date {format: "M/d/yyy"} as String {format: 'yyyy-MM-dd'}) ++ "T15:00:00.000Z",
+    EndDateTime: normalize($.event_date as Date {format: "M/d/yyy"} as String {format: 'yyyy-MM-dd'}) ++ "T16:00:00.000Z"
+} filter ($.WhatId != null)]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="noCompanyEvents" ><![CDATA[%dw 2.0
+output application/json
+fun unMatch(company_id) = vars.accounts filter (item, index) -> item.external_id__c == company_id
+---
+vars.events map {
+    company_id: $.company_id,
+    event_type: $.event_type,
+    event_date: $.event_date,
+    doesAccountExistForEvent: sizeOf(unMatch($.company_id))>0
+} filter ($.doesAccountExistForEvent == false and $.company_id != null)]]></ee:set-variable>
+				<ee:set-variable variableName="emptyFieldsEvents" ><![CDATA[%dw 2.0
+output application/json
+---
+vars.events filter (item, index) -> 
+	item.company_id == null 
+or item.event_date == null 
+or item.event_type == null]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<flow-ref doc:name="post failed records" doc:id="f697304f-63ba-4948-943a-1804f577a339" name="post_not_valid_events" target="postMessageResult"/>
+		<logger level="INFO" doc:name="Logger" doc:id="df5415fe-1456-4fd5-b1bb-dcfd6a4d0b87" message="#[payload]" />
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="96cfe05a-38e4-476c-b26b-83ff02be8e7e" >
+				<logger level="ERROR" doc:name="Logger" doc:id="7d8ea849-b7c3-4637-b9cd-f94c6a3dddeb" message="#[payload]" />
+				<ee:transform doc:name="Transform Message" doc:id="24cfa8dd-bb26-4044-b79f-539c0e0491e4" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/text
+---
+"File is demaged, please check file 'events.xml'"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="post_not_valid_events" doc:id="d5ac7af8-fc6d-4e13-a24d-aa05cc868e4c" >
+		<ee:transform doc:name="Prepare Message" doc:id="0c3d32ab-3238-4a38-a8af-9e6a290b4089" >
+			<ee:message >
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="message" ><![CDATA[%dw 2.0
+output application/json
+---
+[
+	{
+		Name: " Null Fields Events",
+		Type__c: 'ERROR',
+		Message__c: "Events from external source has null fields: \n" ++ write(vars.emptyFieldsEvents,'application/json') 
+		
+	}
+]
+]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<salesforce:create doc:name="Create" doc:id="f322c3be-5d4e-4b40-b374-bad9601cf587" config-ref="Salesforce_Config" type="Data_Migration_Log__c">
+			<salesforce:records ><![CDATA[#[vars.message]]]></salesforce:records>
+		</salesforce:create>
+	</flow>
+	<flow name="get_companies" doc:id="4d452856-3994-4c4c-a651-b333435acf1f" >
+		<file:read doc:name="Read Companies" doc:id="cbf0bbdc-5275-4ff0-948a-69c051858255" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\companies.csv" >
+			<ee:repeatable-file-store-stream bufferUnit="MB" />
+			<reconnect />
+		</file:read>
+		<ee:transform doc:name="Filter companies" doc:id="42be8d01-4750-42ab-aae9-dc9d61803a72" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun isDuplicatedId(company_id) = payload filter ((item, index) -> item.company_id == company_id)
+fun isDuplicatedName(company_name) = payload filter ((item, index) -> item.company_name == company_name)
+---
+(payload map {
+    company_id: $.company_id,
+    company_name: $.company_name,
+    isCompanyIdDuplicated: sizeOf(isDuplicatedId($.company_id))>1,
+    isCompanyNameDuplicated: sizeOf(isDuplicatedName($.company_name))>1
+} filter ($.isCompanyIdDuplicated == false and  $.isCompanyNameDuplicated == false) 
+) map {
+    Name: $.company_name,
+    external_id__c: $.company_id,
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables />
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="371f6f49-fdfe-4ba5-96cd-955a75da8cb3" message="#[payload]" />
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="44ea3b80-36b9-4667-b0fd-b68942224a48" >
+				<logger level="ERROR" doc:name="Logger" doc:id="848a3706-5908-4493-acd3-2726a0e5acd6" message="#[payload]" />
+				<ee:transform doc:name="Transform Message" doc:id="7b38c59a-5779-4c1c-a6df-6a2ec926e41c" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/text
+---
+"File is demaged, please check file 'companies.csv'"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+	<flow name="get_addresses" doc:id="de2cffff-a39f-46eb-a38e-fe6e33cd066f" >
+		<file:read doc:name="Read Addresses" doc:id="65710876-b974-42bb-b3c3-a006a344d153" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\addresses.csv" >
+			<ee:repeatable-file-store-stream bufferUnit="MB" />
+		</file:read>
+		<ee:transform doc:name="Format Addresses" doc:id="30acfab9-6b21-41c2-8107-7a4d8249259b" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<ee:transform doc:name="Filter Addresses" doc:id="1a5f98a4-f758-42e4-8273-0e77f7677121" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+fun unMatch(company_id) = vars.companies filter (item, index) -> item.external_id__c == company_id
+---
+(payload map {
+    company_id: $.company_id,
+    BillingAddress__c: $.address,
+    BillingCity__c: $.city,
+    BillingCountry__c: $.county,
+    PostalCode__c: $.zip,
+    doesAddressExistForCompany: sizeOf(unMatch($.company_id))>0
+} filter ($.doesAddressExistForCompany == true and $.company_id != null)) map {
+	Name: unMatch($.company_id)[0].Name,
+    BillingAddress__c: $.BillingAddress__c,
+    BillingCity__c: $.BillingCity__c,
+    BillingCountry__c: "USA",
+    PostalCode__c: $.PostalCode__c,
+    external_id__c: $.company_id
+}]]></ee:set-payload>
+			</ee:message>
+			<ee:variables >
+				<ee:set-variable variableName="noCompaniesAddresses" ><![CDATA[%dw 2.0
+output application/json
+fun unMatch(company_id) = payload filter (item, index) -> item.company_id == company_id
+---
+payload distinctBy ($.company_id) map {
+    company_id: $.company_id,
+    doesAccountExistForEvent: sizeOf(unMatch($.company_id))>0
+} filter ($.doesAccountExistForEvent == false and $.company_id != null) map {
+	BillingCity: $.city,
+	BillingContry: $.country,
+	
+}]]></ee:set-variable>
+			</ee:variables>
+		</ee:transform>
+		<logger level="INFO" doc:name="Logger" doc:id="40365c52-ecc2-4749-82c8-84f167d4412d" message="#[payload]" />
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="6d864056-7f6e-4e61-8bd9-b74832b75d2f" >
+				<logger level="ERROR" doc:name="Logger" doc:id="e6739fd5-b4e0-4c5a-900a-e49be626fe2c" message="#[payload]" />
+				<ee:transform doc:name="Transform Message" doc:id="d7da7969-4d2e-4b63-a1f9-6108ae48c4e7" >
+					<ee:message >
+						<ee:set-payload ><![CDATA[%dw 2.0
+output application/text
+---
+"File is demaged, please check file 'addresses.csv'"]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+			</on-error-propagate>
+		</error-handler>
+	</flow>
+</mule>

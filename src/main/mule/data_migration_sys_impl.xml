@@ -11,111 +11,6 @@ http://www.mulesoft.org/schema/mule/batch http://www.mulesoft.org/schema/mule/ba
 http://www.mulesoft.org/schema/mule/os http://www.mulesoft.org/schema/mule/os/current/mule-os.xsd">
 	<os:config name="ObjectStore_Config" doc:name="ObjectStore Config" doc:id="f475f65a-5ded-44e2-abd7-e3b93af0c2e8" />
 	<os:object-store name="Object_store" doc:name="Object store" doc:id="7d42b26d-16be-48dc-9916-1bb3f1740a20" maxEntries="5000" entryTtl="1" expirationInterval="60" config-ref="ObjectStore_Config" />
-	<flow name="get_companies" doc:id="3a701fb8-edfc-4533-95d0-6f94ff5b31c5" >
-		<file:read doc:name="Read Companies" doc:id="c0470c1f-ec80-4f92-a33f-bab114f7a06d" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\companies.csv">
-			<ee:repeatable-file-store-stream bufferUnit="MB" />
-			<reconnect />
-		</file:read>
-		<ee:transform doc:name="Filter companies" doc:id="4ad2accc-5aed-4fad-b788-a8a126482366">
-			<ee:message>
-				<ee:set-payload><![CDATA[%dw 2.0
-output application/json
-fun isDuplicatedId(company_id) = payload filter ((item, index) -> item.company_id == company_id)
-fun isDuplicatedName(company_name) = payload filter ((item, index) -> item.company_name == company_name)
----
-(payload map {
-    company_id: $.company_id,
-    company_name: $.company_name,
-    isCompanyIdDuplicated: sizeOf(isDuplicatedId($.company_id))>1,
-    isCompanyNameDuplicated: sizeOf(isDuplicatedName($.company_name))>1
-} filter ($.isCompanyIdDuplicated == false and  $.isCompanyNameDuplicated == false) 
-) map {
-    Name: $.company_name,
-    external_id__c: $.company_id,
-}]]></ee:set-payload>
-			</ee:message>
-			<ee:variables>
-			</ee:variables>
-		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="13ebe279-4f05-442f-b2bd-bde3175fc241" message="#[payload]" />
-		<error-handler >
-			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="c4ae0226-7995-4e80-a1c4-00d1f458c670" >
-				<logger level="ERROR" doc:name="Logger" doc:id="7eb35851-006d-47ad-bddd-b5ca2a703dae" message="#[payload]"/>
-				<ee:transform doc:name="Transform Message" doc:id="a930a3fe-cade-478f-bf02-49c44249612e" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
-output application/text
----
-"File is demaged, please check file 'companies.csv'"]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-			</on-error-propagate>
-		</error-handler>
-	</flow>
-	<flow name="get_addresses" doc:id="1bb5e6c5-f5d6-4b68-a346-7c86ff478e67" >
-		<file:read doc:name="Read Addresses" doc:id="8a97557c-34db-4040-a886-364eef97f09e" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\addresses.csv">
-			<ee:repeatable-file-store-stream bufferUnit="MB" />
-		</file:read>
-		<ee:transform doc:name="Parse Addresses" doc:id="9965a3c3-c398-4797-9b01-2e0a3f950a10" >
-			<ee:message >
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
----
-payload]]></ee:set-payload>
-			</ee:message>
-		</ee:transform>
-		<ee:transform doc:name="Filter Addresses" doc:id="5f54930d-419d-4884-b575-d260cc182c70">
-			<ee:message>
-				<ee:set-payload ><![CDATA[%dw 2.0
-output application/json
-fun unMatch(company_id) = vars.companies filter (item, index) -> item.external_id__c == company_id
----
-(payload map {
-    company_id: $.company_id,
-    BillingAddress__c: $.address,
-    BillingCity__c: $.city,
-    BillingCountry__c: $.county,
-    PostalCode__c: $.zip,
-    doesAddressExistForCompany: sizeOf(unMatch($.company_id))>0
-} filter ($.doesAddressExistForCompany == true and $.company_id != null)) map {
-	Name: unMatch($.company_id)[0].Name,
-    BillingAddress__c: $.BillingAddress__c,
-    BillingCity__c: $.BillingCity__c,
-    BillingCountry__c: $.BillingCountry__c,
-    PostalCode__c: $.PostalCode__c,
-    external_id__c: $.company_id
-}]]></ee:set-payload>
-			</ee:message>
-			<ee:variables >
-				<ee:set-variable variableName="noCompaniesAddresses" ><![CDATA[%dw 2.0
-output application/json
-fun unMatch(company_id) = payload filter (item, index) -> item.company_id == company_id
----
-payload distinctBy ($.company_id) map {
-    company_id: $.company_id,
-    doesAccountExistForEvent: sizeOf(unMatch($.company_id))>0
-} filter ($.doesAccountExistForEvent == false and $.company_id != null) map {
-	BillingCity: $.city,
-	BillingContry: $.country,
-	
-}]]></ee:set-variable>
-			</ee:variables>
-		</ee:transform>
-		<logger level="INFO" doc:name="Logger" doc:id="4f3df55b-25b0-42c3-917b-8516c57dcd23" message="#[payload]"/>
-		<error-handler >
-			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="69c528f7-6a75-4fe0-8753-a3566f742676" >
-				<logger level="ERROR" doc:name="Logger" doc:id="4b7b5224-dc7c-43c6-90e8-71273152ea34" message="#[payload]" />
-				<ee:transform doc:name="Transform Message" doc:id="420c6025-620d-44e6-886b-179a588d5b74" >
-					<ee:message >
-						<ee:set-payload ><![CDATA[%dw 2.0
-output application/text
----
-"File is demaged, please check file 'addresses.csv'"]]></ee:set-payload>
-					</ee:message>
-				</ee:transform>
-			</on-error-propagate>
-		</error-handler>
-	</flow>
 <!-- 	<flow name="get_events" doc:id="f5ec48fd-bf1b-49ad-a9a7-17da22e6780a" >
 		<file:read doc:name="Read Events" doc:id="d469e32d-168d-43da-8050-002fe5e7ed78" config-ref="File_Config" path="E:\ynestero\training.mule\FTP\events.xml" target="events"/>
 		<ee:transform doc:name="Transform Message" doc:id="854ca7bf-2372-4ff9-8df3-e44b7085f107" >
@@ -209,6 +104,7 @@ output application/json
 ---
 [
 	{
+		Name: vars.jobID,
 		Type__c: 'FAIL',
 		Message__c: if (payload.originalFields.external_id__c != null)"Records with External IDs below - are not valid: \n" ++ (payload.originalFields.external_id__c joinBy  "\n ") 
 		else vars.bulkFailedResult[0].errorMessage
@@ -224,13 +120,15 @@ output application/json
 		</choice>
 		<error-handler >
 			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="257ee1ff-1adc-41f0-b291-a9be947a0189" >
-				<logger level="INFO" doc:name="Logger" doc:id="e6a8d211-8e08-479e-bebb-629cbd356b60" />
+				<logger level="ERROR" doc:name="Logger" doc:id="e6a8d211-8e08-479e-bebb-629cbd356b60" message="#[error.description]"/>
 			</on-error-propagate>
 		</error-handler>
 	</flow>
 	<flow name="retrieve_successful_records" doc:id="9a042c7f-41f2-4485-b60a-f293806cbf7e" >
 		<salesforce:retrieve-job-successful-results-bulk-v2 doc:name="Retrieve job successful results bulk v 2" doc:id="8fab9760-a9a6-4428-83bf-bfaa17ee1444" config-ref="Salesforce_Config" id="#[vars.jobID]" target="bulkSuccessfullResult"/>
-		<ee:transform doc:name="Successfull Results" doc:id="91115308-83c3-42bf-94b8-b32458ff276b">
+		<choice doc:name="Choice" doc:id="c3617206-8739-4555-b119-baf4cb6aa541" >
+			<when expression='#[vars.obJectName == "Account"]'>
+				<ee:transform doc:name="Successfull Results" doc:id="91115308-83c3-42bf-94b8-b32458ff276b">
 			<ee:message>
 				<ee:set-payload><![CDATA[%dw 2.0
 output application/json
@@ -241,8 +139,26 @@ vars.bulkSuccessfullResult map {
 }]]></ee:set-payload>
 			</ee:message>
 		</ee:transform>
-		<os:store doc:name="Store Accounts Ids" doc:id="12b850c9-10dc-4b47-9d59-0f851ad8940d" key="#[vars.objectName]" objectStore="Object_store">
+				<os:store doc:name="Store Accounts Ids" doc:id="12b850c9-10dc-4b47-9d59-0f851ad8940d" key="#[vars.objectName]" objectStore="Object_store">
 		</os:store>
+			</when>
+			<otherwise >
+				<ee:transform doc:name="Transform Message" doc:id="b3c932e5-2068-4ede-9c2b-11f5c07cde74">
+					<ee:message>
+						<ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.bulkSuccessfullResult]]></ee:set-payload>
+					</ee:message>
+				</ee:transform>
+				<logger level="INFO" doc:name="Logger" doc:id="afab9f2c-856e-47da-ab0c-c775c753be26" message="#[payload]"/>
+			</otherwise>
+		</choice>
+		<error-handler >
+			<on-error-propagate enableNotifications="true" logException="true" doc:name="On Error Propagate" doc:id="4821cfe3-cc80-4997-b9ed-165e802897dd" >
+				<logger level="ERROR" doc:name="Logger" doc:id="c2eae2ed-023f-4c4b-a5fe-45155459c61a" message="#[error.description]"/>
+			</on-error-propagate>
+		</error-handler>
 	</flow>
 	<flow name="post_records" doc:id="aaf95659-ee4a-4ed5-8848-f148f48bd02b" >
 		<logger level="INFO" doc:name="Logger" doc:id="239ef6c9-c7ff-4009-8862-5af9c7bba793" message="#[payload]"/>
@@ -250,11 +166,13 @@ vars.bulkSuccessfullResult map {
 			<when expression='#[vars.objectName == "Event"]'>
 				<ee:transform doc:name="Events Mapping" doc:id="18022952-aec1-4abe-87ba-dc5e389ae2ba">
 			<ee:message>
-				<ee:set-payload><![CDATA[%dw 2.0
+						<ee:set-payload ><![CDATA[%dw 2.0
 output application/csv lineSeparator="\n", quoteValues=true
 ---
 vars.events]]></ee:set-payload>
 			</ee:message>
+					<ee:variables >
+					</ee:variables>
 		</ee:transform>
 			</when>
 			<when expression='#[vars.objectName == "Account"]'>
