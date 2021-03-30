@@ -1,12 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mule xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:apikit="http://www.mulesoft.org/schema/mule/mule-apikit" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:file="http://www.mulesoft.org/schema/mule/file" xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd http://www.mulesoft.org/schema/mule/mule-apikit http://www.mulesoft.org/schema/mule/mule-apikit/current/mule-apikit.xsd  http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd http://www.mulesoft.org/schema/mule/file http://www.mulesoft.org/schema/mule/file/current/mule-file.xsd http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
     <http:listener-config name="data_migration_sys-httpListenerConfig">
-        <http:listener-connection host="0.0.0.0" port="8081" />
+        <http:listener-connection host="0.0.0.0" port="8082" />
     </http:listener-config>
-    <apikit:config name="data_migration_sys-config" api="resource::c9b2eb8d-13da-462a-b646-a8add3177763:data_migration_sys:2.0.0:raml:zip:data_migration_sys.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
-    <salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="9d43c196-94dd-4183-b146-152f9f2c9019">
-        <salesforce:basic-connection username="yehor.nesterov@ctdev.io" password="LongDriveHome12" securityToken="eGU7F7BZwlBChPMLUoR14bOly" />
-    </salesforce:sfdc-config>
+    <apikit:config name="data_migration_sys-config" api="resource::18f41028-95b8-488e-b76f-ececbf17172d:data_migration_sys:3.0.0:raml:zip:data_migration_sys.raml" outboundHeadersMapName="outboundHeaders" httpStatusVarName="httpStatus" />
     <file:config name="File_Config" doc:name="File Config" doc:id="811ca078-c02b-4afa-aa7a-ba2f660a8539">
         <file:connection workingDir="E:\ynestero\training.mule\FTP" />
     </file:config>
@@ -132,7 +129,28 @@ output application/json
     <flow name="get:\accouts:data_migration_sys-config">
         <flow-ref doc:name="Flow Reference" doc:id="e375655e-0c34-442f-8dfb-2ce516ee7ab5" name="data_validation_flow" />
     </flow>
-    <flow name="post:\event\insert:application\json:data_migration_sys-config">
+    <flow name="put:\accounts:application\json:data_migration_sys-config">
+        <flow-ref doc:name="Flow Reference" doc:id="2978ffc8-7aa6-4613-a935-159996e6c881" name="put:\accounts:application\json:data_migration_sys-config" />
+        <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.jobResult]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\events:application\json:data_migration_sys-config">
+        <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.jobResult]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\log_message:application\json:data_migration_sys-config">
         <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0
@@ -142,7 +160,27 @@ output application/json
             </ee:message>
         </ee:transform>
     </flow>
-    <flow name="post:\account\upsert:application\json:data_migration_sys-config">
+    <flow name="post:\failed_job_result:application\json:data_migration_sys-config">
+        <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.bulkFailedResult]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\successful_job_result:application\json:data_migration_sys-config">
+        <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+            <ee:message>
+                <ee:set-payload><![CDATA[%dw 2.0
+output application/json
+---
+vars.bulkSuccessfullResult]]></ee:set-payload>
+            </ee:message>
+        </ee:transform>
+    </flow>
+    <flow name="post:\job_status:application\json:data_migration_sys-config">
         <ee:transform xsi:schemaLocation="http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
             <ee:message>
                 <ee:set-payload><![CDATA[%dw 2.0

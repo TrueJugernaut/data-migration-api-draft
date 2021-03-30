@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:salesforce="http://www.mulesoft.org/schema/mule/salesforce"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/salesforce http://www.mulesoft.org/schema/mule/salesforce/current/mule-salesforce.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<flow name="retrieve_failed_results" doc:id="20bfa6c9-16b4-4a81-81f4-53d8295d1f6e" >
+		<salesforce:retrieve-job-failed-results-bulk-v2 doc:name="Retrieve job failed results bulk v 2" doc:id="0d851b77-7560-4b39-aef5-4a8e5727d9e7" config-ref="Salesforce_Config" id="#[vars.jobID]" target="bulkFailedResult" />
+	</flow>
+	<flow name="retrieve_successful_results" doc:id="629f5389-f7e0-44b8-ae0a-e3d1d32a606f">
+		<salesforce:retrieve-job-successful-results-bulk-v2 doc:name="Retrieve job successful results bulk v 2" doc:id="e96a77b2-23c6-43b1-ad13-a1c6bdbed754" config-ref="Salesforce_Config" id="#[vars.jobID]" target="bulkSuccessfullResult" />
+	</flow>
+	<flow name="post_data_log_message" doc:id="fe29338e-10f9-483c-b94f-ad07e2ba345c" >
+		<salesforce:create type="Data_Migration_Log__c" doc:name="Create" doc:id="e73eb679-1d00-4376-a1cd-f6c7f490f082" config-ref="Salesforce_Config" >
+			<salesforce:records ><![CDATA[#[vars.message]]]></salesforce:records>
+		</salesforce:create>
+	</flow>
+	<flow name="post_object" doc:id="f44de896-3a4d-4066-ab5d-e1d802ceaf7c" >
+		<ee:transform doc:name="Transform Message" doc:id="dbf6312f-6094-4d58-8af7-28e13e64880a" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/csv lineSeparator="\n", quoteValues=true
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<salesforce:create-job-bulk-api-v2 objectType="#[vars.objectName]" operation='#[if (vars.objectName as String == "Account") "upsert" else "insert"]' doc:name="Map Object" doc:id="bb657b1b-7395-4779-91f3-8a6d0a59cd59" config-ref="Salesforce_Config" externalIdFieldName='#[if (vars.objectName as String == "Account") "external_id__c" else ""]' target="jobResult" />
+	</flow>
+	<flow name="get_job_status" doc:id="116d1f30-9d93-40f5-9914-cb6fbeae0a83" >
+		<salesforce:get-job-state-bulk-api-v2 doc:name="Get job status" doc:id="3b5cd850-7b49-4a31-a4d7-538f52635906" config-ref="Salesforce_Config" id="#[vars.jobID]" target="jobStatus" />
+	</flow>
+</mule>

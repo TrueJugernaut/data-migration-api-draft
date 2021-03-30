@@ -80,6 +80,9 @@ output application/text
 			</on-error-propagate>
 		</error-handler>
 	</flow> -->
+	<salesforce:sfdc-config name="Salesforce_Config" doc:name="Salesforce Config" doc:id="48d8e52e-e1cf-4c32-9764-6717cee71ba7" >
+		<salesforce:basic-connection username="yehor.nesterov@ctdev.io" password="LongDriveHome12" securityToken="eGU7F7BZwlBChPMLUoR14bOly" />
+	</salesforce:sfdc-config>
 	<flow name="retrieve_failed_records" doc:id="b66e511f-7d0b-4f9e-998e-ee65a416cf99" >
 		<salesforce:retrieve-job-failed-results-bulk-v2 doc:name="Retrieve job failed results bulk v 2" doc:id="d185d93d-bdbd-4921-a3f4-1877989d9e93" config-ref="Salesforce_Config" id="#[vars.jobID]" target="bulkFailedResult" />
 		<ee:transform doc:name="Failed Results" doc:id="686f3a2a-221c-4162-949e-a644d594c2fd">

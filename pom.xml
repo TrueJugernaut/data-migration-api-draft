@@ -85,9 +85,9 @@
             <classifier>mule-plugin</classifier>
         </dependency>
     	<dependency>
-            <groupId>c9b2eb8d-13da-462a-b646-a8add3177763</groupId>
+            <groupId>18f41028-95b8-488e-b76f-ececbf17172d</groupId>
             <artifactId>data_migration_sys</artifactId>
-            <version>2.0.0</version>
+            <version>3.0.0</version>
             <classifier>raml</classifier>
             <type>zip</type>
         </dependency>
